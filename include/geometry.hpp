@@ -3,37 +3,30 @@
 #include <vector>
 
 enum UETextureType: char {
-   UE_TEXTURE_NONE, UE_TEXTURE_COLOR, UE_TEXTURE_GRADIENT, UE_TEXTURE_UV, UE_TEXTURE_TEXTURE, UE_TEXTURE_CUSTOM
+   UE_TEXTURE_NONE, UE_TEXTURE_COLOR, UE_TEXTURE_TEXTURE, UE_TEXTURE_SHADER
 };
 
-typedef Color (*UETextureCustomCallback)(int x, int y, Vector3 edges, struct DepthData depth, Vector2 uv, float lighting);
+typedef Color (*UETextureShader)(int x, int y, struct DepthData depth, Vector2 uv, float lighting);
 
 struct UETexture {
    UETextureType type;
    union {
       Color color;
-      struct { Color g1, g2, g3; };
       Image texture;
-      UETextureCustomCallback callback;
+      UETextureShader callback;
    };
 
    UETexture()
       : type(UE_TEXTURE_NONE) {}
 
-   UETexture(UETextureType type)
-      : type(type) {}
-   
    UETexture(Color color)
       : type(UE_TEXTURE_COLOR), color(color) {}
-   
-   UETexture(Color color1, Color color2, Color color3)
-      : type(UE_TEXTURE_GRADIENT), g1(color1), g2(color2), g3(color3) {}
 
    UETexture(Image image)
       : type(UE_TEXTURE_TEXTURE), texture(image) {}
 
-   UETexture(UETextureCustomCallback callback)
-      : type(UE_TEXTURE_CUSTOM), callback(callback) {}
+   UETexture(UETextureShader callback)
+      : type(UE_TEXTURE_SHADER), callback(callback) {}
 };
 
 struct TriangleData {

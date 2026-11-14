@@ -53,23 +53,6 @@ void BuildNearPlaneClipping(std::vector<Triangle> &triangles, Vector3 p1, Vector
 
 // drawing
 
-void DrawTriangleUV(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting) {
-   TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
-   if (box.area == 0.0 || box.xmin > box.xmax || box.ymin > box.ymax) return;
-
-   for (int dy = box.ymin; dy <= box.ymax; ++dy) {
-      for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (!InsideTriangle(d.x, d.y, d.z)) continue;
-         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
-         if (DepthBuffer[depth.di] >= depth.z) continue;
-         DepthBuffer[depth.di] = depth.z;
-         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-         ImageDrawPixel(&Canvas, dx, dy, DrawColor(255.0f * uv.x, 255.0f * uv.y, 0.0f, lighting, depth.z));
-      }
-   }
-}
-
 void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, Color color) {
    TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
    if (box.area == 0.0 || box.xmin > box.xmax || box.ymin > box.ymax) return;
@@ -82,27 +65,6 @@ void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 
          if (DepthBuffer[depth.di] >= depth.z) continue;
          DepthBuffer[depth.di] = depth.z;
          ImageDrawPixel(&Canvas, dx, dy, DrawColor(color.r, color.g, color.b, lighting, depth.z));
-      }
-   }
-}
-
-void DrawTriangleGradient(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, Color color1, Color color2, Color color3) {
-   TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
-   if (box.area == 0.0 || box.xmin > box.xmax || box.ymin > box.ymax) return;
-
-   for (int dy = box.ymin; dy <= box.ymax; ++dy) {
-      for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (!InsideTriangle(d.x, d.y, d.z)) continue;
-         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
-         if (DepthBuffer[depth.di] >= depth.z) continue;
-         DepthBuffer[depth.di] = depth.z;
-         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-         float w3 = 1.0f - uv.x - uv.y;
-         float r = uv.x * color1.r + uv.y * color2.r + w3 * color3.r;
-         float g = uv.x * color1.g + uv.y * color2.g + w3 * color3.g;
-         float b = uv.x * color1.b + uv.y * color2.b + w3 * color3.b;
-         ImageDrawPixel(&Canvas, dx, dy, DrawColor(r, g, b, lighting, depth.z));
       }
    }
 }
@@ -126,7 +88,7 @@ void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector
    }
 }
 
-void DrawTriangleCustom(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, UETextureCustomCallback callback) {
+void DrawTriangleCustom(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, UETextureShader callback) {
    TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
    if (box.area == 0.0 || box.xmin > box.xmax || box.ymin > box.ymax) return;
 
@@ -138,7 +100,7 @@ void DrawTriangleCustom(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3
          if (DepthBuffer[depth.di] >= depth.z) continue;
          DepthBuffer[depth.di] = depth.z;
          Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-         ImageDrawPixel(&Canvas, dx, dy, callback(dx, dy, d, depth, uv, lighting));
+         ImageDrawPixel(&Canvas, dx, dy, callback(dx, dy, depth, uv, lighting));
       }
    }
 }
@@ -172,12 +134,6 @@ void RenderFrame() {
          float lighting = Ambient + (1 - Ambient) * std::max(dot, 0.0f);
 
          const UETexture *texture = &shape.textures[t.texture];
-         if (texture->type == UE_TEXTURE_GRADIENT) {
-            uv1 = {1.0f, 0.0f};
-            uv2 = {0.0f, 1.0f};
-            uv3 = {0.0f, 0.0f};
-         }
-
          BuildNearPlaneClipping(triangles, p1, p2, p3, uv1, uv2, uv3, lighting, texture);
       }
    }
@@ -198,11 +154,9 @@ void RenderFrame() {
       Vector3 uv3 = TriangleUVData(t.p3.z, t.uv3);
 
       switch (t.texture->type) {
-      case UE_TEXTURE_UV: DrawTriangleUV(s1, s2, s3, uv1, uv2, uv3, t.lighting); break;
       case UE_TEXTURE_COLOR: DrawTriangleColor(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->color); break;
-      case UE_TEXTURE_GRADIENT: DrawTriangleGradient(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->g1, t.texture->g2, t.texture->g3); break;
       case UE_TEXTURE_TEXTURE: DrawTriangleTexture(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->texture); break;
-      case UE_TEXTURE_CUSTOM: DrawTriangleCustom(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->callback); break;
+      case UE_TEXTURE_SHADER: DrawTriangleCustom(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->callback); break;
       default: break;
       }
    }
