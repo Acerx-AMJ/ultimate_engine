@@ -98,10 +98,10 @@ inline float TriangleArea(Vector2 p1, Vector2 p2, Vector2 p3) {
 }
 
 inline TriangleBounds TriangleBoundingBox(Vector2 p1, Vector2 p2, Vector2 p3) {
-   int xmin = std::clamp<int>(std::floor(std::min({p1.x, p2.x, p3.x})), 0, Width - 1);
-   int xmax = std::clamp<int>(std::ceil(std::max({p1.x, p2.x, p3.x})), 0, Width - 1);
-   int ymin = std::clamp<int>(std::floor(std::min({p1.y, p2.y, p3.y})), 0, Height - 1);
-   int ymax = std::clamp<int>(std::ceil(std::max({p1.y, p2.y, p3.y})), 0, Height - 1);
+   int xmin = std::clamp(std::floor(std::min({p1.x, p2.x, p3.x})), 0.0f, Width - 1.0f);
+   int xmax = std::clamp(std::ceil(std::max({p1.x, p2.x, p3.x})), 0.0f, Width - 1.0f);
+   int ymin = std::clamp(std::floor(std::min({p1.y, p2.y, p3.y})), 0.0f, Height - 1.0f);
+   int ymax = std::clamp(std::ceil(std::max({p1.y, p2.y, p3.y})), 0.0f, Height - 1.0f);
    float area = TriangleArea(p1, p2, p3);
    return {xmin, xmax, ymin, ymax, area};
 }

@@ -8,6 +8,11 @@ unsigned char ToByte(float v) {
    return (v < 0.0f ? 0 : v >= 255.0f ? 255 : (unsigned char)v);
 }
 
+Color DrawColor(float r, float g, float b, float lighting, float z) {
+   float fog = Fog(z);
+   return {ToByte(r * fog * lighting), ToByte(g * fog * lighting), ToByte(b * fog * lighting), 255};
+}
+
 // near plane clipping
 
 void BuildNearPlaneClipping(std::vector<Triangle> &triangles, Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vector2 uv2, Vector2 uv3, float lighting, const UETexture *texture) {
@@ -63,21 +68,13 @@ void DrawTriangleUV(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy) {
       for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         auto [d1, d2, d3] = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (InsideTriangle(d1, d2, d3)) {
-            DepthData depth = TriangleDepth(box.area, d1, d2, d3, uv1.x, uv2.x, uv3.x, dx, dy);
-            if (DepthBuffer[depth.di] < depth.z) {
-               DepthBuffer[depth.di] = static_cast<float>(depth.z);
-               Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-               float fog = Fog(depth.z);
-               Color color;
-               color.r = ToByte(255.0f * uv.x * lighting * fog);
-               color.g = ToByte(255.0f * uv.y * lighting * fog);
-               color.b = 0;
-               color.a = 255;
-               ImageDrawPixel(&Canvas, dx, dy, color);
-            }
-         }
+         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
+         if (!InsideTriangle(d.x, d.y, d.z)) continue;
+         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
+         if (DepthBuffer[depth.di] >= depth.z) continue;
+         DepthBuffer[depth.di] = depth.z;
+         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
+         ImageDrawPixel(&Canvas, dx, dy, DrawColor(255.0f * uv.x, 255.0f * uv.y, 0.0f, lighting, depth.z));
       }
    }
 }
@@ -88,20 +85,12 @@ void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy) {
       for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         auto [d1, d2, d3] = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (InsideTriangle(d1, d2, d3)) {
-            DepthData depth = TriangleDepth(box.area, d1, d2, d3, uv1.x, uv2.x, uv3.x, dx, dy);
-            if (DepthBuffer[depth.di] < depth.z) {
-               DepthBuffer[depth.di] = static_cast<float>(depth.z);
-               float fog = Fog(depth.z);
-               Color draw;
-               draw.r = ToByte(color.r * lighting * fog);
-               draw.g = ToByte(color.g * lighting * fog);
-               draw.b = ToByte(color.b * lighting * fog);
-               draw.a = 255;
-               ImageDrawPixel(&Canvas, dx, dy, draw);
-            }
-         }
+         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
+         if (!InsideTriangle(d.x, d.y, d.z)) continue;
+         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
+         if (DepthBuffer[depth.di] >= depth.z) continue;
+         DepthBuffer[depth.di] = depth.z;
+         ImageDrawPixel(&Canvas, dx, dy, DrawColor(color.r, color.g, color.b, lighting, depth.z));
       }
    }
 }
@@ -112,25 +101,17 @@ void DrawTriangleGradient(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vecto
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy) {
       for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         auto [d1, d2, d3] = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (InsideTriangle(d1, d2, d3)) {
-            DepthData depth = TriangleDepth(box.area, d1, d2, d3, uv1.x, uv2.x, uv3.x, dx, dy);
-            if (DepthBuffer[depth.di] < depth.z) {
-               DepthBuffer[depth.di] = static_cast<float>(depth.z);
-               Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-               float fog = Fog(depth.z);
-               float w3 = 1.0f - uv.x - uv.y;
-               float r = uv.x * color1.r + uv.y * color2.r + w3 * color3.r;
-               float g = uv.x * color1.g + uv.y * color2.g + w3 * color3.g;
-               float b = uv.x * color1.b + uv.y * color2.b + w3 * color3.b;
-               Color color;
-               color.r = ToByte(r * lighting * fog);
-               color.g = ToByte(g * lighting * fog);
-               color.b = ToByte(b * lighting * fog);
-               color.a = 255;
-               ImageDrawPixel(&Canvas, dx, dy, color);
-            }
-         }
+         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
+         if (!InsideTriangle(d.x, d.y, d.z)) continue;
+         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
+         if (DepthBuffer[depth.di] >= depth.z) continue;
+         DepthBuffer[depth.di] = depth.z;
+         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
+         float w3 = 1.0f - uv.x - uv.y;
+         float r = uv.x * color1.r + uv.y * color2.r + w3 * color3.r;
+         float g = uv.x * color1.g + uv.y * color2.g + w3 * color3.g;
+         float b = uv.x * color1.b + uv.y * color2.b + w3 * color3.b;
+         ImageDrawPixel(&Canvas, dx, dy, DrawColor(r, g, b, lighting, depth.z));
       }
    }
 }
@@ -141,23 +122,15 @@ void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy) {
       for (int dx = box.xmin; dx <= box.xmax; ++dx) {
-         auto [d1, d2, d3] = TriangleEdgeValues(dx, dy, p1, p2, p3);
-         if (InsideTriangle(d1, d2, d3)) {
-            DepthData depth = TriangleDepth(box.area, d1, d2, d3, uv1.x, uv2.x, uv3.x, dx, dy);
-            if (DepthBuffer[depth.di] < depth.z) {
-               DepthBuffer[depth.di] = static_cast<float>(depth.z);
-               Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-               auto [tx, ty] = TriangleUVTextureCoords(uv.x, uv.y, texture.width, texture.height);
-               Color pixel = GetImageColor(texture, tx, ty);
-               float fog = Fog(depth.z);
-               Color color;
-               color.r = ToByte(fog * lighting * pixel.r);
-               color.g = ToByte(fog * lighting * pixel.g);
-               color.b = ToByte(fog * lighting * pixel.b);
-               color.a = 255;
-               ImageDrawPixel(&Canvas, dx, dy, color);
-            }
-         }
+         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
+         if (!InsideTriangle(d.x, d.y, d.z)) continue;
+         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
+         if (DepthBuffer[depth.di] >= depth.z) continue;
+         DepthBuffer[depth.di] = depth.z;
+         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
+         TextureCoords t = TriangleUVTextureCoords(uv.x, uv.y, texture.width, texture.height);
+         Color pixel = GetImageColor(texture, t.x, t.y);
+         ImageDrawPixel(&Canvas, dx, dy, DrawColor(pixel.r, pixel.g, pixel.b, lighting, depth.z));
       }
    }
 }
@@ -202,7 +175,7 @@ void RenderFrame() {
    }
 
    // clear the buffers
-   ImageDrawRectangle(&Canvas, 0, 0, Width, Height, BLACK);
+   ImageClearBackground(&Canvas, BLACK);
    std::fill(DepthBuffer.begin(), DepthBuffer.end(), 0.0f);
 
    // draw triangles
@@ -210,18 +183,18 @@ void RenderFrame() {
       Vector2 s1 = TranslateToScreen(t.p1);
       Vector2 s2 = TranslateToScreen(t.p2);
       Vector2 s3 = TranslateToScreen(t.p3);
-      if (TriangleNormalZ(s1, s2, s3) <= 0) {
-         Vector3 uv1 = TriangleUVData(t.p1.z, t.uv1);
-         Vector3 uv2 = TriangleUVData(t.p2.z, t.uv2);
-         Vector3 uv3 = TriangleUVData(t.p3.z, t.uv3);
 
-         switch (t.texture->type) {
-         case UE_TEXTURE_UV: DrawTriangleUV(s1, s2, s3, uv1, uv2, uv3, t.lighting); break;
-         case UE_TEXTURE_COLOR: DrawTriangleColor(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->color); break;
-         case UE_TEXTURE_GRADIENT: DrawTriangleGradient(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->g1, t.texture->g2, t.texture->g3); break;
-         case UE_TEXTURE_TEXTURE: DrawTriangleTexture(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->texture); break;
-         default: break;
-         }
+      if (TriangleNormalZ(s1, s2, s3) > 0) continue;
+      Vector3 uv1 = TriangleUVData(t.p1.z, t.uv1);
+      Vector3 uv2 = TriangleUVData(t.p2.z, t.uv2);
+      Vector3 uv3 = TriangleUVData(t.p3.z, t.uv3);
+
+      switch (t.texture->type) {
+      case UE_TEXTURE_UV: DrawTriangleUV(s1, s2, s3, uv1, uv2, uv3, t.lighting); break;
+      case UE_TEXTURE_COLOR: DrawTriangleColor(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->color); break;
+      case UE_TEXTURE_GRADIENT: DrawTriangleGradient(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->g1, t.texture->g2, t.texture->g3); break;
+      case UE_TEXTURE_TEXTURE: DrawTriangleTexture(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->texture); break;
+      default: break;
       }
    }
 }
