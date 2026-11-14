@@ -55,23 +55,18 @@ struct DepthData {
 
 struct TriangleBounds {
    int xmin, xmax, ymin, ymax;
-   float area;
+   float area, ia;
 };
 
-struct TextureCoords {
-   int x, y;
-};
-
-inline DepthData TriangleDepth(float area, float d1, float d2, float d3, float uv1x, float uv2x, float uv3x, int dx, int dy) {
-   float ia = 1.0f / area;
-   float w3 = d1 * ia, w1 = d2 * ia, w2 = d3 * ia;
-   float z = w1 * uv1x + w2 * uv2x + w3 * uv3x;
+inline DepthData TriangleDepth(float ia, Vector3 d, Vector3 invZ, int dx, int dy) {
+   float w3 = d.x * ia, w1 = d.y * ia, w2 = d.z * ia;
+   float z = w1 * invZ.x + w2 * invZ.y + w3 * invZ.z;
    int di = dx + dy * Width;
    return {w1, w2, w3, z, di};
 }
 
-inline bool InsideTriangle(float d1, float d2, float d3) {
-   return (d1 <= 0.0f && d2 <= 0.0f && d3 <= 0.0f) || (d1 >= 0.0f && d2 >= 0.0f && d3 >= 0.0f);
+inline bool InsideTriangle(Vector3 d) {
+   return (d.x <= 0.0f && d.y <= 0.0f && d.z <= 0.0f) || (d.x >= 0.0f && d.y >= 0.0f && d.z >= 0.0f);
 }
 
 inline float TriangleNormalZ(Vector2 p1, Vector2 p2, Vector2 p3) {
@@ -93,6 +88,19 @@ inline Vector3 TriangleEdgeValues(int dx, int dy, Vector2 p1, Vector2 p2, Vector
    return {d1, d2, d3};
 }
 
+inline Vector3 TriangleEdgeStepX(Vector2 p1, Vector2 p2, Vector2 p3) {
+   return {p1.y - p2.y, p2.y - p3.y, p3.y - p1.y};
+}
+
+inline Vector3 TriangleEdgeStepY(Vector2 p1, Vector2 p2, Vector2 p3) {
+   return {p2.x - p1.x, p3.x - p2.x, p1.x - p3.x};
+}
+ 
+inline bool TriangleOffScreen(Vector2 p1, Vector2 p2, Vector2 p3) {
+   return std::max({p1.x, p2.x, p3.x}) < 0.0f || std::min({p1.x, p2.x, p3.x}) >= Width
+       || std::max({p1.y, p2.y, p3.y}) < 0.0f || std::min({p1.y, p2.y, p3.y}) >= Height;
+}
+
 inline float TriangleArea(Vector2 p1, Vector2 p2, Vector2 p3) {
    return p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
 }
@@ -103,24 +111,23 @@ inline TriangleBounds TriangleBoundingBox(Vector2 p1, Vector2 p2, Vector2 p3) {
    int ymin = std::clamp(std::floor(std::min({p1.y, p2.y, p3.y})), 0.0f, Height - 1.0f);
    int ymax = std::clamp(std::ceil(std::max({p1.y, p2.y, p3.y})), 0.0f, Height - 1.0f);
    float area = TriangleArea(p1, p2, p3);
-   return {xmin, xmax, ymin, ymax, area};
+   return {xmin, xmax, ymin, ymax, area, 1.0f / area};
 }
 
 inline Vector3 TriangleUVData(float z, Vector2 uv) {
    return {1.0f / z, uv.x / z, uv.y / z};
 }
 
-inline Vector2 TriangleUV(float w1, float w2, float w3, Vector3 uv1, Vector3 uv2, Vector3 uv3) {
-   float k = w1 * uv1.x + w2 * uv2.x + w3 * uv3.x;
+inline Vector2 TriangleUV(float z, float w1, float w2, float w3, Vector3 uv1, Vector3 uv2, Vector3 uv3) {
    float r = w1 * uv1.y + w2 * uv2.y + w3 * uv3.y;
    float g = w1 * uv1.z + w2 * uv2.z + w3 * uv3.z;
-   return {r / k, g / k};
+   return {r / z, g / z};
 }
 
-inline TextureCoords TriangleUVTextureCoords(float u, float v, int twidth, int theight) {
+inline int TriangleUVTextureCoords(float u, float v, int twidth, int theight) {
    int tx = std::clamp<int>(u * twidth, 0, twidth - 1);
    int ty = std::clamp<int>(theight - (v * theight), 0, theight - 1);
-   return {tx, ty};
+   return ty * twidth + tx;
 }
 
 // Misc. math

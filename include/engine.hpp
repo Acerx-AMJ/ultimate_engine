@@ -35,6 +35,10 @@ inline Image Canvas;
 inline Texture CanvasTexture;
 inline std::vector<float> DepthBuffer;
 inline std::vector<Geometry> GeometryContainer;
+inline std::vector<Triangle> RenderTriangles;
+inline std::vector<Vector3> RenderPoints;
+inline std::vector<float> RenderTriangleKeys;
+inline std::vector<int> RenderTriangleOrder;
 
 void InitEngine();
 void CloseEngine();

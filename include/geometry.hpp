@@ -23,7 +23,9 @@ struct UETexture {
       : type(UE_TEXTURE_COLOR), color(color) {}
 
    UETexture(Image image)
-      : type(UE_TEXTURE_TEXTURE), texture(image) {}
+      : type(UE_TEXTURE_TEXTURE), texture(image) {
+      ImageFormat(&texture, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+   }
 
    UETexture(UETextureShader callback)
       : type(UE_TEXTURE_SHADER), callback(callback) {}
