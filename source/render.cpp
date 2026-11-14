@@ -4,15 +4,6 @@
 #include <raymath.h>
 #include <algorithm>
 
-unsigned char ToByte(float v) {
-   return (v < 0.0f ? 0 : v >= 255.0f ? 255 : (unsigned char)v);
-}
-
-Color DrawColor(float r, float g, float b, float lighting, float z) {
-   float fog = Fog(z);
-   return {ToByte(r * fog * lighting), ToByte(g * fog * lighting), ToByte(b * fog * lighting), 255};
-}
-
 // near plane clipping
 
 void BuildNearPlaneClipping(std::vector<Triangle> &triangles, Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vector2 uv2, Vector2 uv3, float lighting, const UETexture *texture) {
@@ -135,6 +126,23 @@ void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector
    }
 }
 
+void DrawTriangleCustom(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, UETextureCustomCallback callback) {
+   TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
+   if (box.area == 0.0 || box.xmin > box.xmax || box.ymin > box.ymax) return;
+
+   for (int dy = box.ymin; dy <= box.ymax; ++dy) {
+      for (int dx = box.xmin; dx <= box.xmax; ++dx) {
+         Vector3 d = TriangleEdgeValues(dx, dy, p1, p2, p3);
+         if (!InsideTriangle(d.x, d.y, d.z)) continue;
+         DepthData depth = TriangleDepth(box.area, d.x, d.y, d.z, uv1.x, uv2.x, uv3.x, dx, dy);
+         if (DepthBuffer[depth.di] >= depth.z) continue;
+         DepthBuffer[depth.di] = depth.z;
+         Vector2 uv = TriangleUV(depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
+         ImageDrawPixel(&Canvas, dx, dy, callback(dx, dy, d, depth, uv, lighting));
+      }
+   }
+}
+
 // frame rendering
 
 void RenderFrame() {
@@ -194,6 +202,7 @@ void RenderFrame() {
       case UE_TEXTURE_COLOR: DrawTriangleColor(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->color); break;
       case UE_TEXTURE_GRADIENT: DrawTriangleGradient(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->g1, t.texture->g2, t.texture->g3); break;
       case UE_TEXTURE_TEXTURE: DrawTriangleTexture(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->texture); break;
+      case UE_TEXTURE_CUSTOM: DrawTriangleCustom(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->callback); break;
       default: break;
       }
    }

@@ -3,8 +3,10 @@
 #include <vector>
 
 enum UETextureType: char {
-   UE_TEXTURE_NONE, UE_TEXTURE_COLOR, UE_TEXTURE_GRADIENT, UE_TEXTURE_UV, UE_TEXTURE_TEXTURE
+   UE_TEXTURE_NONE, UE_TEXTURE_COLOR, UE_TEXTURE_GRADIENT, UE_TEXTURE_UV, UE_TEXTURE_TEXTURE, UE_TEXTURE_CUSTOM
 };
+
+typedef Color (*UETextureCustomCallback)(int x, int y, Vector3 edges, struct DepthData depth, Vector2 uv, float lighting);
 
 struct UETexture {
    UETextureType type;
@@ -12,6 +14,7 @@ struct UETexture {
       Color color;
       struct { Color g1, g2, g3; };
       Image texture;
+      UETextureCustomCallback callback;
    };
 
    UETexture()
@@ -28,6 +31,9 @@ struct UETexture {
 
    UETexture(Image image)
       : type(UE_TEXTURE_TEXTURE), texture(image) {}
+
+   UETexture(UETextureCustomCallback callback)
+      : type(UE_TEXTURE_CUSTOM), callback(callback) {}
 };
 
 struct Tr6 {
