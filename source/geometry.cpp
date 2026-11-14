@@ -8,7 +8,7 @@ void SetupShapesVerticesBasedOnRotation(const std::vector<Vector3> &vertices, st
    }
 }
 
-Geometry MakeGeometry(Vector3 pos, Vector3 size, Vector3 rotation, const std::vector<Tr6> &triangles, const std::vector<Vector3> &vertices, const std::vector<Vector2> &uv, const std::vector<UETexture> &textures) {
+Geometry MakeGeometry(Vector3 pos, Vector3 size, Vector3 rotation, const std::vector<TriangleData> &triangles, const std::vector<Vector3> &vertices, const std::vector<Vector2> &uv, const std::vector<UETexture> &textures) {
    Geometry geometry;
    geometry.pos = pos;
    geometry.size = size;
@@ -56,7 +56,7 @@ void RotateGeometry(Geometry &geometry, Vector3 rotation) {
 // vertices - x, y, z
 
 Geometry NewFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2) {
-   std::vector<Tr6> triangles = {
+   std::vector<TriangleData> triangles = {
       {0, 1, 3, 0, 1, 3, 0},
       {1, 2, 3, 1, 2, 3, 1},
    };
@@ -84,7 +84,7 @@ Geometry NewFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1) {
 }
 
 Geometry NewCube(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2, UETexture t3, UETexture t4, UETexture t5, UETexture t6, UETexture t7, UETexture t8, UETexture t9, UETexture t10, UETexture t11, UETexture t12) {
-   std::vector<Tr6> triangles = {
+   std::vector<TriangleData> triangles = {
       {7, 6, 5, 0, 1, 2, 0},
       {5, 4, 7, 2, 3, 0, 1},
       {3, 7, 4, 0, 1, 2, 2},
@@ -134,7 +134,7 @@ Geometry NewCube(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1) {
 }
 
 Geometry NewWedge(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2, UETexture t3, UETexture t4, UETexture t5, UETexture t6, UETexture t7, UETexture t8) {
-   std::vector<Tr6> triangles = {
+   std::vector<TriangleData> triangles = {
       {0, 1, 2, 2, 3, 0, 0},
       {2, 3, 0, 0, 1, 2, 1},
       {3, 2, 4, 0, 1, 2, 2},
@@ -174,7 +174,7 @@ Geometry NewWedge(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1) {
 }
 
 Geometry NewPyramid(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2, UETexture t3, UETexture t4, UETexture t5, UETexture t6) {
-   std::vector<Tr6> triangles = {
+   std::vector<TriangleData> triangles = {
       {0, 2, 1, 4, 0, 3, 0},
       {0, 3, 2, 4, 0, 3, 1},
       {0, 4, 3, 4, 0, 3, 2},

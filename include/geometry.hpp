@@ -36,7 +36,7 @@ struct UETexture {
       : type(UE_TEXTURE_CUSTOM), callback(callback) {}
 };
 
-struct Tr6 {
+struct TriangleData {
    int x, y, z;
    int uv1, uv2, uv3;
    int texture;
@@ -44,7 +44,7 @@ struct Tr6 {
 
 struct Geometry {
    Vector3 pos, size, origin, rotation;
-   std::vector<Tr6> triangles;
+   std::vector<TriangleData> triangles;
    std::vector<Vector3> vertices;
    std::vector<Vector3> points;
    std::vector<Vector2> uv;
@@ -62,7 +62,7 @@ struct Triangle {
 };
 
 void SetupShapesVerticesBasedOnRotation(const std::vector<Vector3> &vertices, std::vector<Vector3> &points, Vector3 origin, Vector3 rotation);
-Geometry MakeGeometry(Vector3 pos, Vector3 size, Vector3 rotation, const std::vector<Tr6> &triangles, const std::vector<Vector3> &vertices, const std::vector<Vector2> &uv, const std::vector<UETexture> &textures);
+Geometry MakeGeometry(Vector3 pos, Vector3 size, Vector3 rotation, const std::vector<TriangleData> &triangles, const std::vector<Vector3> &vertices, const std::vector<Vector2> &uv, const std::vector<UETexture> &textures);
 
 // Geometry edit functions
 

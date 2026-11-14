@@ -31,20 +31,7 @@ int main() {
             depth.z
         );
    }}));
-   GeometryContainer.push_back(NewFace({-3, 0, 4.5f}, {1.0f, 1.0f, 0}, {0, PI / 2, 0}, {[](int x, int y, Vector3 edges, DepthData depth, Vector2 uv, float lighting) -> Color {
-      float t = uv.x - 0.5f;
-      float f1 = 0.5f - sin(t * 20.0f + Timer * 3.0f) * 0.25f;
-      float f2 = 10.0f * t * t;
-      float f3 = 0.5f + (t == 0.0f ? 0.0f : 0.015f / t);
-      return DrawColor(
-         255.0f / (std::abs(uv.y - f1) * 30.0f),
-         255.0f / (std::abs(uv.y - f2) * 30.0f),
-         255.0f / (std::abs(uv.y - f3) * 30.0f),
-         lighting,
-         depth.z
-      );
-   }}));
-   GeometryContainer.push_back(NewFace({-3, 0.0f, 6.0f}, {1.0f, 1.0f, 0}, {0, PI / 2, 0}, {[](int x, int y, Vector3 edges, DepthData depth, Vector2 uv, float lighting) -> Color {
+   GeometryContainer.push_back(NewFace({-3, 0.0f, 4.5f}, {1.0f, 1.0f, 0}, {0, PI / 2, 0}, {[](int x, int y, Vector3 edges, DepthData depth, Vector2 uv, float lighting) -> Color {
         float px = (uv.x - 0.5f) * 8.0f;
         float py = (uv.y - 0.5f) * 8.0f;
         float warpX = px + 1.2f * std::sin(py * 1.7f + Timer);

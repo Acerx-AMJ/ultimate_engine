@@ -157,7 +157,7 @@ void RenderFrame() {
          points[i] = Rotate3D(shape.points[i] + Offset, Rotation);
       }
 
-      for (const Tr6 &t: shape.triangles) {
+      for (const TriangleData &t: shape.triangles) {
          Vector3 p1 = points[t.x];
          Vector3 p2 = points[t.y];
          Vector3 p3 = points[t.z];
