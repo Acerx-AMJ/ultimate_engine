@@ -30,6 +30,7 @@ inline float FogStart = 2.0f;
 inline float FogEnd = 10.0f;
 inline float NearClip = 0.01f;
 inline bool ShowFPS = true;
+inline bool FreeCamera = true;
 
 // engine
 inline Image Canvas;

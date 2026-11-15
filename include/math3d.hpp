@@ -130,17 +130,6 @@ inline Color SampleImage(Image image, Vector2 uv) {
    return ((const Color*)image.data)[t];
 }
 
-// Misc. math
-
-inline float Fog(float z) {
-   return 1.0f - std::clamp((1.0f / z - FogStart) / (FogEnd - FogStart), 0.0f, 1.0f);
-}
-
 inline unsigned char ToByte(float v) {
    return (v < 0.0f ? 0 : v >= 255.0f ? 255 : (unsigned char)v);
-}
-
-inline Color DrawColor(float r, float g, float b, float a, float lighting, float z) {
-   float fog = Fog(z);
-   return {ToByte(r * fog * lighting), ToByte(g * fog * lighting), ToByte(b * fog * lighting), ToByte(a)};
 }

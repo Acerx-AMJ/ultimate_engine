@@ -16,7 +16,9 @@ void CloseEngine() {
 void UpdateEngine() {
    float dt = GetFrameTime();
    Vector2 mouse = GetMouseDelta();
-   
+   Timer += dt;
+   if (!FreeCamera) return;
+
    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
       Rotation.x = std::clamp(Rotation.x - mouse.y * 0.01f, -PI / 2.0f, PI / 2.0f);
       Rotation.y = Rotation.y + mouse.x * 0.01f;
@@ -29,7 +31,6 @@ void UpdateEngine() {
       (IsKeyDown(KEY_S) - IsKeyDown(KEY_W)) * speed,
    };
    Offset += Rotate3D(move, {0.0f, -Rotation.y, -Rotation.z});
-   Timer += dt;
 }
 
 // near plane clipping
@@ -77,6 +78,7 @@ void RasterizeTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 
    Vector3 stepY = TriangleEdgeStepY(p1, p2, p3);
    Vector3 rowEdges = TriangleEdgeValues(box.xmin, box.ymin, p1, p2, p3);
    Color *pixels = (Color*)Canvas.data;
+   float fogScale = 1.0f / (FogEnd - FogStart);
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy, rowEdges += stepY) {
       Vector3 edges = rowEdges;
@@ -94,7 +96,8 @@ void RasterizeTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 
 
          Color color = surfaceAt(dx, dy, depth);
          if (color.a == 0) continue;
-         Color src = DrawColor(color.r, color.g, color.b, 255, lighting, depth.z);
+         float fog = 1.0f - std::clamp((1.0f / depth.z - FogStart) * fogScale, 0.0f, 1.0f);
+         Color src = {ToByte(color.r * fog * lighting), ToByte(color.g * fog * lighting), ToByte(color.b * fog * lighting), color.a};
 
          if (color.a == 255) {
             DepthBuffer[depth.di] = depth.z;
