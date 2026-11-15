@@ -4,6 +4,8 @@
 #include <raymath.h>
 #include <algorithm>
 
+constexpr float InverseColorConversion = 1.0f / 255.0f;
+
 // near plane clipping
 
 struct Vertex {
@@ -40,12 +42,14 @@ void BuildNearPlaneClipping(Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vec
 
 void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, Color color) {
    TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
-   if (box.area == 0.0f) return;
+   if (box.area == 0.0f || color.a == 0) return;
    Vector3 invZ = {uv1.x, uv2.x, uv3.x};
    Vector3 stepX = TriangleEdgeStepX(p1, p2, p3);
    Vector3 stepY = TriangleEdgeStepY(p1, p2, p3);
    Vector3 rowEdges = TriangleEdgeValues(box.xmin, box.ymin, p1, p2, p3);
    Color *pixels = (Color*)Canvas.data;
+   float a = color.a * InverseColorConversion;
+   float ma = 1.0f - a;
 
    for (int dy = box.ymin; dy <= box.ymax; ++dy, rowEdges += stepY) {
       Vector3 edges = rowEdges;
@@ -60,8 +64,14 @@ void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 
 
          DepthData depth = TriangleDepth(box.ia, edges, invZ, dx, dy);
          if (DepthBuffer[depth.di] >= depth.z) continue;
-         DepthBuffer[depth.di] = depth.z;
-         pixels[depth.di] = DrawColor(color.r, color.g, color.b, lighting, depth.z);
+         if (color.a != 255) {
+            Color dst = pixels[depth.di];
+            pixels[depth.di] = DrawColor(color.r * a + dst.r * ma, color.g * a + dst.g * ma, color.b * a + dst.b * ma, 255, lighting, depth.z);
+         }
+         else {
+            DepthBuffer[depth.di] = depth.z;
+            pixels[depth.di] = DrawColor(color.r, color.g, color.b, color.a, lighting, depth.z);
+         }
       }
    }
 }
@@ -88,12 +98,22 @@ void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector
 
          DepthData depth = TriangleDepth(box.ia, edges, invZ, dx, dy);
          if (DepthBuffer[depth.di] >= depth.z) continue;
-         DepthBuffer[depth.di] = depth.z;
 
          Vector2 uv = TriangleUV(depth.z, depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
          int t = TriangleUVTextureCoords(uv.x, uv.y, texture.width, texture.height);
          Color color = ((const Color*)texture.data)[t];
-         pixels[depth.di] = DrawColor(color.r, color.g, color.b, lighting, depth.z);
+         if (color.a == 0) continue;
+
+         if (color.a != 255) {
+            Color dst = pixels[depth.di];
+            float a = color.a * InverseColorConversion;
+            float ma = 1.0f - a;
+            pixels[depth.di] = DrawColor(color.r * a + dst.r * ma, color.g * a + dst.g * ma, color.b * a + dst.b * ma, 255, lighting, depth.z);
+         }
+         else {
+            DepthBuffer[depth.di] = depth.z;
+            pixels[depth.di] = DrawColor(color.r, color.g, color.b, color.a, lighting, depth.z);
+         }
       }
    }
 }
@@ -169,10 +189,18 @@ void RenderFrame() {
    RenderTriangleOrder.resize(RenderTriangles.size());
 
    for (size_t i = 0; i < RenderTriangles.size(); ++i) {
-      RenderTriangleKeys[i] = RenderTriangles[i].p1.z + RenderTriangles[i].p2.z + RenderTriangles[i].p3.z;
+      RenderTriangleKeys[i].depth = RenderTriangles[i].p1.z + RenderTriangles[i].p2.z + RenderTriangles[i].p3.z;
+      RenderTriangleKeys[i].transparent = RenderTriangles[i].texture->isTransparent;
       RenderTriangleOrder[i] = i;
    }
-   std::sort(RenderTriangleOrder.begin(), RenderTriangleOrder.end(), [&](int a, int b) { return RenderTriangleKeys[a] < RenderTriangleKeys[b]; });
+   std::sort(RenderTriangleOrder.begin(), RenderTriangleOrder.end(), [&](int a, int b) {
+      SortData ad = RenderTriangleKeys[a];
+      SortData bd = RenderTriangleKeys[b];
+      if (ad.transparent != bd.transparent) {
+         return !ad.transparent && bd.transparent;
+      }
+      return ad.depth < bd.depth;
+   });
  
    for (int i: RenderTriangleOrder) {
       const Triangle &t = RenderTriangles[i];

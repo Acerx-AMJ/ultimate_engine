@@ -10,6 +10,7 @@ typedef Color (*UETextureShader)(int x, int y, struct DepthData depth, Vector2 u
 
 struct UETexture {
    UETextureType type;
+   bool isTransparent = false;
    union {
       Color color;
       Image texture;
@@ -20,15 +21,37 @@ struct UETexture {
       : type(UE_TEXTURE_NONE) {}
 
    UETexture(Color color)
-      : type(UE_TEXTURE_COLOR), color(color) {}
+      : type(UE_TEXTURE_COLOR), color(color) {
+      if (color.a == 0) {
+         type = UE_TEXTURE_NONE;
+      }
+      else if (color.a != 0 && color.a != 255) {
+         isTransparent = true;
+      }
+   }
 
    UETexture(Image image)
       : type(UE_TEXTURE_TEXTURE), texture(image) {
       ImageFormat(&texture, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+      int size = texture.width * texture.height;
+      Color *pixels = (Color*)texture.data;
+
+      for (int i = 0; i < size; ++i) {
+         const Color &color = pixels[i];
+         if (color.a != 0 && color.a != 255) {
+            isTransparent = true;
+            break;
+         }
+      }
    }
 
    UETexture(UETextureShader callback)
       : type(UE_TEXTURE_SHADER), callback(callback) {}
+};
+
+struct SortData {
+   float depth;
+   bool transparent;
 };
 
 struct TriangleData {

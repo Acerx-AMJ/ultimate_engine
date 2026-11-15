@@ -2,18 +2,18 @@
 #include "geometry.hpp"
 
 // colors
-inline constexpr Color Red = {255, 0, 0};
-inline constexpr Color Green = {0, 255, 0};
-inline constexpr Color Blue = {0, 0, 255};
-inline constexpr Color Yellow = {255, 255, 0};
-inline constexpr Color Magenta = {255, 0, 255};
-inline constexpr Color Cyan = {0, 255, 255};
-inline constexpr Color Pink = {255, 0, 128};
-inline constexpr Color Orange = {255, 128, 0};
-inline constexpr Color Lime = {128, 255, 0};
-inline constexpr Color Teal = {0, 255, 128};
-inline constexpr Color SkyBlue = {0, 128, 255};
-inline constexpr Color Purple = {128, 0, 255};
+inline constexpr Color Red = {255, 0, 0, 255};
+inline constexpr Color Green = {0, 255, 0, 255};
+inline constexpr Color Blue = {0, 0, 255, 255};
+inline constexpr Color Yellow = {255, 255, 0, 255};
+inline constexpr Color Magenta = {255, 0, 255, 255};
+inline constexpr Color Cyan = {0, 255, 255, 255};
+inline constexpr Color Pink = {255, 0, 128, 255};
+inline constexpr Color Orange = {255, 128, 0, 255};
+inline constexpr Color Lime = {128, 255, 0, 255};
+inline constexpr Color Teal = {0, 255, 128, 255};
+inline constexpr Color SkyBlue = {0, 128, 255, 255};
+inline constexpr Color Purple = {128, 0, 255, 255};
 
 // camera
 inline Vector3 Rotation = {0.0f, 0.0f, 0.0f};
@@ -37,7 +37,7 @@ inline std::vector<float> DepthBuffer;
 inline std::vector<Geometry> GeometryContainer;
 inline std::vector<Triangle> RenderTriangles;
 inline std::vector<Vector3> RenderPoints;
-inline std::vector<float> RenderTriangleKeys;
+inline std::vector<SortData> RenderTriangleKeys;
 inline std::vector<int> RenderTriangleOrder;
 
 void InitEngine();
