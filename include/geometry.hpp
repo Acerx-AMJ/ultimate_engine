@@ -37,8 +37,7 @@ struct UETexture {
       Color *pixels = (Color*)texture.data;
 
       for (int i = 0; i < size; ++i) {
-         const Color &color = pixels[i];
-         if (color.a != 0 && color.a != 255) {
+         if (pixels[i].a != 0 && pixels[i].a != 255) {
             isTransparent = true;
             break;
          }
