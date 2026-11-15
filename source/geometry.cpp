@@ -25,7 +25,7 @@ Geometry MakeGeometry(Vector3 pos, Vector3 size, Vector3 rotation, const std::ve
 // Geometry edit functions
 
 void MoveGeometry(Geometry &geometry, Vector3 offset) {
-   for (auto &vertex : geometry.vertices) {
+   for (Vector3 &vertex: geometry.vertices) {
       vertex = (vertex - geometry.pos) + offset;
    }
    geometry.pos = offset;
@@ -35,7 +35,7 @@ void MoveGeometry(Geometry &geometry, Vector3 offset) {
 
 void ScaleGeometry(Geometry &geometry, Vector3 scale) {
    Vector3 factor = scale / Vec3ZeroFix(geometry.size);
-   for (auto &vertex : geometry.vertices) {
+   for (Vector3 &vertex: geometry.vertices) {
       vertex = (vertex - geometry.pos) * factor + geometry.pos;
    }
 
@@ -81,6 +81,40 @@ Geometry NewFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETe
 
 Geometry NewFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1) {
    return NewFace(pos, size, rotation, t1, t1);
+}
+
+Geometry NewDoubleSidedFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2, UETexture t3, UETexture t4) {
+   std::vector<TriangleData> triangles = {
+      {0, 1, 3, 0, 1, 3, 0},
+      {1, 2, 3, 1, 2, 3, 1},
+      {3, 1, 0, 3, 1, 0, 2},
+      {3, 2, 1, 3, 2, 1, 3},
+   };
+
+   std::vector<Vector2> uv = {
+      {0.0f, 0.0f},
+      {1.0f, 0.0f},
+      {1.0f, 1.0f},
+      {0.0f, 1.0f},
+   };
+
+   std::vector<Vector3> vertices = {
+      {pos.x, pos.y, pos.z},
+      {pos.x + size.x, pos.y, pos.z},
+      {pos.x + size.x, pos.y + size.y, pos.z},
+      {pos.x, pos.y + size.y, pos.z},
+   };
+
+   std::vector<UETexture> textures = {t1, t2, t3, t4};
+   return MakeGeometry(pos, size, rotation, triangles, vertices, uv, textures);
+}
+
+Geometry NewDoubleSidedFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2) {
+   return NewDoubleSidedFace(pos, size, rotation, t1, t1, t2, t2);
+}
+
+Geometry NewDoubleSidedFace(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1) {
+   return NewDoubleSidedFace(pos, size, rotation, t1, t1, t1, t1);
 }
 
 Geometry NewCube(Vector3 pos, Vector3 size, Vector3 rotation, UETexture t1, UETexture t2, UETexture t3, UETexture t4, UETexture t5, UETexture t6, UETexture t7, UETexture t8, UETexture t9, UETexture t10, UETexture t11, UETexture t12) {

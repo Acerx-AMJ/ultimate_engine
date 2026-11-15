@@ -14,6 +14,7 @@ inline constexpr Color Lime = {128, 255, 0, 255};
 inline constexpr Color Teal = {0, 255, 128, 255};
 inline constexpr Color SkyBlue = {0, 128, 255, 255};
 inline constexpr Color Purple = {128, 0, 255, 255};
+inline constexpr Color Black = {0, 0, 0, 255};
 
 // camera
 inline Vector3 Rotation = {0.0f, 0.0f, 0.0f};
@@ -34,13 +35,22 @@ inline bool ShowFPS = true;
 inline Image Canvas;
 inline Texture CanvasTexture;
 inline std::vector<float> DepthBuffer;
-inline std::vector<Geometry> GeometryContainer;
 inline std::vector<Triangle> RenderTriangles;
 inline std::vector<Vector3> RenderPoints;
 inline std::vector<SortData> RenderTriangleKeys;
 inline std::vector<int> RenderTriangleOrder;
+inline std::vector<UEShader> RenderShaders;
+inline int CurrentShader = -1;
+inline Vector3 Light = LightDirection;
 
 void InitEngine();
 void CloseEngine();
 void UpdateEngine();
-void RenderEngine();
+
+void BeginRender();
+void EndRender();
+void BeginShader(const UEShader &shader);
+void EndShader();
+
+Color SampleTexture(const UETexture &texture, Vector2 uv);
+void RenderGeometry(const Geometry &geometry);

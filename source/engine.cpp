@@ -32,19 +32,6 @@ void UpdateEngine() {
    Timer += dt;
 }
 
-void RenderFrame();
-
-void RenderEngine() {
-   RenderFrame();
-   UpdateTexture(CanvasTexture, Canvas.data);
-
-   BeginDrawing();
-   ClearBackground(BLACK);
-   DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
-   if (ShowFPS) DrawFPS(0, 0);
-   EndDrawing();
-}
-
 // near plane clipping
 
 struct Vertex {
@@ -52,7 +39,7 @@ struct Vertex {
    Vector2 uv;
 };
 
-void BuildNearPlaneClipping(Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vector2 uv2, Vector2 uv3, float lighting, const UETexture *texture) {
+void BuildNearPlaneClipping(Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vector2 uv2, Vector2 uv3, float lighting, const UETexture *texture, int shader) {
    Vertex in[3] = {{p1, uv1}, {p2, uv2}, {p3, uv3}};
    Vertex poly[4];
    int count = 0;
@@ -73,52 +60,16 @@ void BuildNearPlaneClipping(Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vec
    }
  
    for (int i = 1; i + 1 < count; ++i) {
-      RenderTriangles.emplace_back(poly[0].p, poly[i].p, poly[i + 1].p, poly[0].uv, poly[i].uv, poly[i + 1].uv, lighting, texture);
+      RenderTriangles.emplace_back(poly[0].p, poly[i].p, poly[i + 1].p, poly[0].uv, poly[i].uv, poly[i + 1].uv, lighting, texture, shader);
    }
 }
 
-// drawing
+// rendering
 
 constexpr float InverseColorConversion = 1.0f / 255.0f;
 
-void DrawTriangleColor(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, Color color) {
-   TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
-   if (box.area == 0.0f || color.a == 0) return;
-   Vector3 invZ = {uv1.x, uv2.x, uv3.x};
-   Vector3 stepX = TriangleEdgeStepX(p1, p2, p3);
-   Vector3 stepY = TriangleEdgeStepY(p1, p2, p3);
-   Vector3 rowEdges = TriangleEdgeValues(box.xmin, box.ymin, p1, p2, p3);
-   Color *pixels = (Color*)Canvas.data;
-   float a = color.a * InverseColorConversion;
-   float ma = 1.0f - a;
-
-   for (int dy = box.ymin; dy <= box.ymax; ++dy, rowEdges += stepY) {
-      Vector3 edges = rowEdges;
-      bool entered = false;
-
-      for (int dx = box.xmin; dx <= box.xmax; ++dx, edges += stepX) {
-         if (!InsideTriangle(edges)) {
-            if (entered) break;
-            continue;
-         }
-         entered = true;
-
-         DepthData depth = TriangleDepth(box.ia, edges, invZ, dx, dy);
-         if (DepthBuffer[depth.di] >= depth.z) continue;
-         if (color.a != 255) {
-            Color dst = pixels[depth.di];
-            Color src = DrawColor(color.r, color.g, color.b, 255, lighting, depth.z);
-            pixels[depth.di] = {ToByte(src.r * a + dst.r * ma), ToByte(src.g * a + dst.g * ma), ToByte(src.b * a + dst.b * ma), 255};
-         }
-         else {
-            DepthBuffer[depth.di] = depth.z;
-            pixels[depth.di] = DrawColor(color.r, color.g, color.b, color.a, lighting, depth.z);
-         }
-      }
-   }
-}
-
-void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, Image texture) {
+template <typename SurfaceAt>
+void RasterizeTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, SurfaceAt surfaceAt) {
    TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
    if (box.area == 0.0f) return;
    Vector3 invZ = {uv1.x, uv2.x, uv3.x};
@@ -141,99 +92,52 @@ void DrawTriangleTexture(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector
          DepthData depth = TriangleDepth(box.ia, edges, invZ, dx, dy);
          if (DepthBuffer[depth.di] >= depth.z) continue;
 
-         Vector2 uv = TriangleUV(depth.z, depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-         int t = TriangleUVTextureCoords(uv.x, uv.y, texture.width, texture.height);
-         Color color = ((const Color*)texture.data)[t];
+         Color color = surfaceAt(dx, dy, depth);
          if (color.a == 0) continue;
+         Color src = DrawColor(color.r, color.g, color.b, 255, lighting, depth.z);
 
-         if (color.a != 255) {
+         if (color.a == 255) {
+            DepthBuffer[depth.di] = depth.z;
+            pixels[depth.di] = src;
+         }
+         else {
             Color dst = pixels[depth.di];
-            Color src = DrawColor(color.r, color.g, color.b, 255, lighting, depth.z);
             float a = color.a * InverseColorConversion;
             float ma = 1.0f - a;
             pixels[depth.di] = {ToByte(src.r * a + dst.r * ma), ToByte(src.g * a + dst.g * ma), ToByte(src.b * a + dst.b * ma), 255};
          }
-         else {
-            DepthBuffer[depth.di] = depth.z;
-            pixels[depth.di] = DrawColor(color.r, color.g, color.b, color.a, lighting, depth.z);
-         }
       }
    }
 }
 
-void DrawTriangleCustom(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, UETextureShader callback) {
-   TriangleBounds box = TriangleBoundingBox(p1, p2, p3);
-   if (box.area == 0.0f) return;
-   Vector3 invZ = {uv1.x, uv2.x, uv3.x};
-   Vector3 stepX = TriangleEdgeStepX(p1, p2, p3);
-   Vector3 stepY = TriangleEdgeStepY(p1, p2, p3);
-   Vector3 rowEdges = TriangleEdgeValues(box.xmin, box.ymin, p1, p2, p3);
-   Color *pixels = (Color*)Canvas.data;
-
-   for (int dy = box.ymin; dy <= box.ymax; ++dy, rowEdges += stepY) {
-      Vector3 edges = rowEdges;
-      bool entered = false;
-
-      for (int dx = box.xmin; dx <= box.xmax; ++dx, edges += stepX) {
-         if (!InsideTriangle(edges)) {
-            if (entered) break;
-            continue;
-         }
-         entered = true;
-
-         DepthData depth = TriangleDepth(box.ia, edges, invZ, dx, dy);
-         if (DepthBuffer[depth.di] >= depth.z) continue;
-         DepthBuffer[depth.di] = depth.z;
-
-         Vector2 uv = TriangleUV(depth.z, depth.w1, depth.w2, depth.w3, uv1, uv2, uv3);
-         pixels[depth.di] = callback(dx, dy, depth, uv, lighting);
-      }
+Color SampleTexture(const UETexture &texture, Vector2 uv) {
+   switch (texture.type) {
+   case UE_TEXTURE_COLOR: return texture.color;
+   case UE_TEXTURE_TEXTURE: return SampleImage(texture.texture, uv);
+   default: return WHITE;
    }
 }
 
-// frame rendering
-
-void RenderFrame() {
-   Vector3 light = Rotate3D(LightDirection, Rotation);
+void BeginRender() {
    RenderTriangles.clear();
+   Light = Rotate3D(LightDirection, Rotation);
+   RenderShaders.clear();
+   CurrentShader = -1;
+}
 
-   // build the triangles
-   for (const Geometry &shape: GeometryContainer) {
-      RenderPoints.resize(shape.points.size());
-      for (size_t i = 0; i < shape.points.size(); ++i) {
-         RenderPoints[i] = Rotate3D(shape.points[i] + Offset, Rotation);
-      }
-
-      for (const TriangleData &t: shape.triangles) {
-         Vector3 p1 = RenderPoints[t.x];
-         Vector3 p2 = RenderPoints[t.y];
-         Vector3 p3 = RenderPoints[t.z];
-
-         Vector2 uv1 = shape.uv[t.uv1];
-         Vector2 uv2 = shape.uv[t.uv2];
-         Vector2 uv3 = shape.uv[t.uv3];
-
-         Vector3 cross = Vector3CrossProduct(p2 - p1, p3 - p1);
-         Vector3 normal = Vector3Normalize(cross);
-         float dot = Vector3DotProduct(normal, light);
-         float lighting = Ambient + (1 - Ambient) * std::max(dot, 0.0f);
-
-         const UETexture *texture = &shape.textures[t.texture];
-         BuildNearPlaneClipping(p1, p2, p3, uv1, uv2, uv3, lighting, texture);
-      }
-   }
-
+void EndRender() {
    // clear the buffers
    ImageClearBackground(&Canvas, BLACK);
    std::fill(DepthBuffer.begin(), DepthBuffer.end(), 0.0f);
 
-   // sort nearest first
+   // sort triangles
    RenderTriangleKeys.resize(RenderTriangles.size());
    RenderTriangleOrder.resize(RenderTriangles.size());
 
    for (size_t i = 0; i < RenderTriangles.size(); ++i) {
-      RenderTriangleKeys[i].depth = RenderTriangles[i].p1.z + RenderTriangles[i].p2.z + RenderTriangles[i].p3.z;
-      RenderTriangleKeys[i].transparent = RenderTriangles[i].texture->isTransparent;
+      const Triangle &t = RenderTriangles[i];
+      RenderTriangleKeys[i].depth = t.p1.z + t.p2.z + t.p3.z;
+      RenderTriangleKeys[i].transparent = t.texture->isTransparent || (t.shader >= 0 && RenderShaders[t.shader].transparent);
       RenderTriangleOrder[i] = i;
    }
    std::sort(RenderTriangleOrder.begin(), RenderTriangleOrder.end(), [&](int a, int b) {
@@ -242,12 +146,12 @@ void RenderFrame() {
       if (ad.transparent != bd.transparent) {
          return !ad.transparent && bd.transparent;
       }
-      if (ad.transparent && bd.transparent) {
+      if (ad.transparent) {
          return bd.depth < ad.depth;
       }
       return ad.depth < bd.depth;
    });
- 
+
    for (int i: RenderTriangleOrder) {
       const Triangle &t = RenderTriangles[i];
       Vector2 s1 = TranslateToScreen(t.p1);
@@ -259,11 +163,72 @@ void RenderFrame() {
       Vector3 uv2 = TriangleUVData(t.p2.z, t.uv2);
       Vector3 uv3 = TriangleUVData(t.p3.z, t.uv3);
 
+      const UEShader *shader = (t.shader >= 0 ? &RenderShaders[t.shader] : nullptr);
+      if (shader && shader->fragment) {
+         RasterizeTriangle(s1, s2, s3, uv1, uv2, uv3, t.lighting, [&](int x, int y, const DepthData &d){
+            FragmentInput input = {x, y, d, TriangleUV(d.z, d.w1, d.w2, d.w3, uv1, uv2, uv3), PixelPosition(x, y, d.z), t.texture};
+            return shader->fragment(input, shader->data);
+         });
+         continue;
+      }
+
       switch (t.texture->type) {
-      case UE_TEXTURE_COLOR: DrawTriangleColor(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->color); break;
-      case UE_TEXTURE_TEXTURE: DrawTriangleTexture(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->texture); break;
-      case UE_TEXTURE_SHADER: DrawTriangleCustom(s1, s2, s3, uv1, uv2, uv3, t.lighting, t.texture->callback); break;
+      case UE_TEXTURE_COLOR:
+         RasterizeTriangle(s1, s2, s3, uv1, uv2, uv3, t.lighting, [color = t.texture->color](int, int, const DepthData&) { return color; });
+         break;
+      case UE_TEXTURE_TEXTURE:
+         RasterizeTriangle(s1, s2, s3, uv1, uv2, uv3, t.lighting, [&](int, int, const DepthData &d) { return SampleImage(t.texture->texture, TriangleUV(d.z, d.w1, d.w2, d.w3, uv1, uv2, uv3)); });
+         break;
       default: break;
       }
+   }
+
+   // show it
+   UpdateTexture(CanvasTexture, Canvas.data);
+
+   BeginDrawing();
+   ClearBackground(BLACK);
+   DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
+   if (ShowFPS) DrawFPS(0, 0);
+   EndDrawing();
+}
+
+void BeginShader(const UEShader &shader) {
+   CurrentShader = RenderShaders.size();
+   RenderShaders.push_back(shader);
+}
+
+void EndShader() {
+   CurrentShader = -1;
+}
+
+void RenderGeometry(const Geometry &geometry) {
+   const UEShader *shader = (CurrentShader >= 0 ? &RenderShaders[CurrentShader] : nullptr);
+
+   // apply vertex shader
+   RenderPoints.resize(geometry.points.size());
+   for (size_t i = 0; i < geometry.points.size(); ++i) {
+      Vector3 point = geometry.points[i];
+      if (shader && shader->vertex) point = shader->vertex(point, i, shader->data);
+      RenderPoints[i] = Rotate3D(point + Offset, Rotation);
+   }
+
+   // build the triangles
+   for (const TriangleData &t: geometry.triangles) {
+      Vector3 p1 = RenderPoints[t.x];
+      Vector3 p2 = RenderPoints[t.y];
+      Vector3 p3 = RenderPoints[t.z];
+
+      Vector2 uv1 = geometry.uv[t.uv1];
+      Vector2 uv2 = geometry.uv[t.uv2];
+      Vector2 uv3 = geometry.uv[t.uv3];
+
+      Vector3 cross = Vector3CrossProduct(p2 - p1, p3 - p1);
+      Vector3 normal = Vector3Normalize(cross);
+      float dot = Vector3DotProduct(normal, Light);
+      float lighting = Ambient + (1 - Ambient) * std::max(dot, 0.0f);
+
+      const UETexture *texture = &geometry.textures[t.texture];
+      BuildNearPlaneClipping(p1, p2, p3, uv1, uv2, uv3, lighting, texture, CurrentShader);
    }
 }

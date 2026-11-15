@@ -48,16 +48,6 @@ inline Vector3 Vec3ZeroFix(Vector3 p1) {
 
 // Triangle math
 
-struct DepthData {
-   float w1, w2, w3, z;
-   int di;
-};
-
-struct TriangleBounds {
-   int xmin, xmax, ymin, ymax;
-   float area, ia;
-};
-
 inline DepthData TriangleDepth(float ia, Vector3 d, Vector3 invZ, int dx, int dy) {
    float w3 = d.x * ia, w1 = d.y * ia, w2 = d.z * ia;
    float z = w1 * invZ.x + w2 * invZ.y + w3 * invZ.z;
@@ -128,6 +118,16 @@ inline int TriangleUVTextureCoords(float u, float v, int twidth, int theight) {
    int tx = std::clamp<int>(u * twidth, 0, twidth - 1);
    int ty = std::clamp<int>(theight - (v * theight), 0, theight - 1);
    return ty * twidth + tx;
+}
+
+inline Vector3 PixelPosition(int dx, int dy, float z) {
+   float depth = 1.0f / z;
+   return {((dx + 0.5f) * 2.0f / Width - 1.0f) * depth, (1.0f - (dy + 0.5f) * 2.0f / Height) * depth, depth};
+}
+
+inline Color SampleImage(Image image, Vector2 uv) {
+   int t = TriangleUVTextureCoords(uv.x, uv.y, image.width, image.height);
+   return ((const Color*)image.data)[t];
 }
 
 // Misc. math
