@@ -6,6 +6,11 @@ void InitEngine() {
    CanvasTexture = LoadTextureFromImage(Canvas);
    SetTextureFilter(CanvasTexture, TEXTURE_FILTER_POINT);
    DepthBuffer.resize(Width * Height, 0.0f);
+
+   WidthRatio = (float)GetScreenWidth() / Width;
+   HeightRatio = (float)GetScreenHeight() / Height;
+   PixelWidth = WidthRatio / 3.0f;
+   PixelRadius = std::min(WidthRatio, HeightRatio) / 4.0f;
 }
 
 void CloseEngine() {
@@ -68,6 +73,12 @@ void BuildNearPlaneClipping(Vector3 p1, Vector3 p2, Vector3 p3, Vector2 uv1, Vec
 // rendering
 
 constexpr float InverseColorConversion = 1.0f / 255.0f;
+
+unsigned char roundToMultiple(unsigned char num, unsigned char multiple) {
+   unsigned char remainder = num % multiple;
+   if (remainder == 0) return num;
+   return num + multiple - remainder;
+}
 
 template <typename SurfaceAt>
 void RasterizeTriangle(Vector2 p1, Vector2 p2, Vector2 p3, Vector3 uv1, Vector3 uv2, Vector3 uv3, float lighting, SurfaceAt surfaceAt) {
@@ -191,7 +202,56 @@ void EndRender() {
 
    BeginDrawing();
    ClearBackground(BLACK);
-   DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
+
+   switch (Mode) {
+   case RENDER_MODE_DEFAULT:
+      DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
+      break;
+   case RENDER_LIMITED_PALETTE_PIXEL: {
+      Color *pixels = (Color*)Canvas.data;
+      float py = 0.0f;
+      
+      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
+         float px = 0.0f;
+         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
+            Color color = pixels[y * Canvas.width + x];
+            if (color.r != 0) DrawRectangleV({px, py}, {PixelWidth, HeightRatio}, Color{roundToMultiple(color.r, 42), 0, 0, 255});
+            if (color.g != 0) DrawRectangleV({px + PixelWidth, py}, {PixelWidth, HeightRatio}, Color{0, roundToMultiple(color.g, 42), 0, 255});
+            if (color.b != 0) DrawRectangleV({px + PixelWidth * 2.0f, py}, {PixelWidth, HeightRatio}, Color{0, 0, roundToMultiple(color.b, 42), 255});
+         }
+      }
+      break;
+   }
+   case RENDER_MODE_PIXEL: {
+      Color *pixels = (Color*)Canvas.data;
+      float py = 0.0f;
+      
+      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
+         float px = 0.0f;
+         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
+            Color color = pixels[y * Canvas.width + x];
+            if (color.r != 0) DrawRectangleV({px, py}, {PixelWidth, HeightRatio}, Color{color.r, 0, 0, 255});
+            if (color.g != 0) DrawRectangleV({px + PixelWidth, py}, {PixelWidth, HeightRatio}, Color{0, color.g, 0, 255});
+            if (color.b != 0) DrawRectangleV({px + PixelWidth * 2.0f, py}, {PixelWidth, HeightRatio}, Color{0, 0, color.b, 255});
+         }
+      }
+      break;
+   }
+   case RENDER_MODE_CIRCULAR_PIXEL:
+      Color *pixels = (Color*)Canvas.data;
+      float py = 0.0f;
+
+      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
+         float px = 0.0f;
+         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
+            Color color = pixels[y * Canvas.width + x];
+            if (color.r != 0) DrawCircleSector({px + PixelRadius, py + PixelRadius}, PixelRadius, 0.0f, 360.0f, 6, Color{color.r, 0, 0, 255});
+            if (color.g != 0) DrawCircleSector({px + PixelRadius * 3.0f, py + PixelRadius}, PixelRadius, 0.0f, 360.0f, 6, Color{0, color.g, 0, 255});
+            if (color.b != 0) DrawCircleSector({px + PixelRadius * 2.0f, py + PixelRadius * 3.0f}, PixelRadius, 0.0f, 360.0f, 6, Color{0, 0, color.b, 255});
+         }
+      }
+      break;
+   }
    if (ShowFPS) DrawFPS(0, 0);
    EndDrawing();
 }
