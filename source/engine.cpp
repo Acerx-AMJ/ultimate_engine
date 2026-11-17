@@ -1,21 +1,48 @@
 #include "engine.hpp"
 #include "math3d.hpp"
 
+static Image Canvas;
+static Texture CanvasTexture;
+static std::vector<float> DepthBuffer;
+static std::vector<Triangle> RenderTriangles;
+static std::vector<Vector3> RenderPoints;
+static std::vector<SortData> RenderTriangleKeys;
+static std::vector<int> RenderTriangleOrder;
+static std::vector<UEShader> RenderShaders;
+static int CurrentShader = -1;
+static Vector3 Light = LightDirection;
+
+static Shader circularPixelShader;
+static Shader pixelShader;
+static Shader sobelShader;
+static Shader bloomShader;
+
 void InitEngine() {
    Canvas = GenImageColor(Width, Height, BLACK);
    CanvasTexture = LoadTextureFromImage(Canvas);
    SetTextureFilter(CanvasTexture, TEXTURE_FILTER_POINT);
    DepthBuffer.resize(Width * Height, 0.0f);
 
-   WidthRatio = (float)GetScreenWidth() / Width;
-   HeightRatio = (float)GetScreenHeight() / Height;
-   PixelWidth = WidthRatio / 3.0f;
-   PixelRadius = std::min(WidthRatio, HeightRatio) / 4.0f;
+   circularPixelShader = LoadShader(nullptr, "shaders/cpixel.fs");
+   pixelShader = LoadShader(nullptr, "shaders/pixel.fs");
+   sobelShader = LoadShader(nullptr, "shaders/sobel.fs");
+   bloomShader = LoadShader(nullptr, "shaders/bloom.fs");
+
+   Vector2 canvasSize = {(float)Canvas.width, (float)Canvas.height};
+   SetShaderValue(circularPixelShader, GetShaderLocation(circularPixelShader, "canvasSize"), &canvasSize, SHADER_UNIFORM_VEC2);
+   SetShaderValue(pixelShader, GetShaderLocation(pixelShader, "canvasSize"), &canvasSize, SHADER_UNIFORM_VEC2);
+   SetShaderValue(sobelShader, GetShaderLocation(sobelShader, "resolution"), &canvasSize, SHADER_UNIFORM_VEC2);
+   SetShaderValue(bloomShader, GetShaderLocation(bloomShader, "size"), &canvasSize, SHADER_UNIFORM_VEC2);
 }
 
 void CloseEngine() {
    UnloadTexture(CanvasTexture);
    UnloadImage(Canvas);
+
+   UnloadShader(circularPixelShader);
+   UnloadShader(pixelShader);
+   UnloadShader(sobelShader);
+   UnloadShader(bloomShader);
 }
 
 void UpdateEngine() {
@@ -199,58 +226,20 @@ void EndRender() {
 
    // show it
    UpdateTexture(CanvasTexture, Canvas.data);
-
    BeginDrawing();
    ClearBackground(BLACK);
 
    switch (Mode) {
-   case RENDER_MODE_DEFAULT:
-      DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
-      break;
-   case RENDER_LIMITED_PALETTE_PIXEL: {
-      Color *pixels = (Color*)Canvas.data;
-      float py = 0.0f;
-      
-      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
-         float px = 0.0f;
-         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
-            Color color = pixels[y * Canvas.width + x];
-            if (color.r != 0) DrawRectangleV({px, py}, {PixelWidth, HeightRatio}, Color{roundToMultiple(color.r, 42), 0, 0, 255});
-            if (color.g != 0) DrawRectangleV({px + PixelWidth, py}, {PixelWidth, HeightRatio}, Color{0, roundToMultiple(color.g, 42), 0, 255});
-            if (color.b != 0) DrawRectangleV({px + PixelWidth * 2.0f, py}, {PixelWidth, HeightRatio}, Color{0, 0, roundToMultiple(color.b, 42), 255});
-         }
-      }
-      break;
+   case RENDER_MODE_PIXEL: BeginShaderMode(pixelShader); break;
+   case RENDER_MODE_CIRCULAR_PIXEL: BeginShaderMode(circularPixelShader); break;
+   case RENDER_MODE_SOBEL: BeginShaderMode(sobelShader); break;
+   case RENDER_MODE_BLOOM: BeginShaderMode(bloomShader); break;
+   default: break;
    }
-   case RENDER_MODE_PIXEL: {
-      Color *pixels = (Color*)Canvas.data;
-      float py = 0.0f;
-      
-      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
-         float px = 0.0f;
-         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
-            Color color = pixels[y * Canvas.width + x];
-            if (color.r != 0) DrawRectangleV({px, py}, {PixelWidth, HeightRatio}, Color{color.r, 0, 0, 255});
-            if (color.g != 0) DrawRectangleV({px + PixelWidth, py}, {PixelWidth, HeightRatio}, Color{0, color.g, 0, 255});
-            if (color.b != 0) DrawRectangleV({px + PixelWidth * 2.0f, py}, {PixelWidth, HeightRatio}, Color{0, 0, color.b, 255});
-         }
-      }
-      break;
-   }
-   case RENDER_MODE_CIRCULAR_PIXEL:
-      Color *pixels = (Color*)Canvas.data;
-      float py = 0.0f;
 
-      for (int y = 0; y < Canvas.height; ++y, py += HeightRatio) {
-         float px = 0.0f;
-         for (int x = 0; x < Canvas.width; ++x, px += WidthRatio) {
-            Color color = pixels[y * Canvas.width + x];
-            if (color.r != 0) DrawCircleSector({px + PixelRadius, py + PixelRadius}, PixelRadius, 0.0f, 360.0f, 6, Color{color.r, 0, 0, 255});
-            if (color.g != 0) DrawCircleSector({px + PixelRadius * 3.0f, py + PixelRadius}, PixelRadius, 0.0f, 360.0f, 6, Color{0, color.g, 0, 255});
-            if (color.b != 0) DrawCircleSector({px + PixelRadius * 2.0f, py + PixelRadius * 3.0f}, PixelRadius, 0.0f, 360.0f, 6, Color{0, 0, color.b, 255});
-         }
-      }
-      break;
+   DrawTexturePro(CanvasTexture, {0, 0, (float)Width, (float)Height}, {0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()}, {0, 0}, 0, WHITE);
+   if (Mode != RENDER_MODE_DEFAULT) {
+      EndShaderMode();
    }
    if (ShowFPS) DrawFPS(0, 0);
    EndDrawing();

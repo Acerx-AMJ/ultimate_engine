@@ -23,7 +23,7 @@ inline float Timer = 0.0f;
 
 // settings
 enum RenderMode: char {
-   RENDER_MODE_DEFAULT, RENDER_LIMITED_PALETTE_PIXEL, RENDER_MODE_PIXEL, RENDER_MODE_CIRCULAR_PIXEL
+   RENDER_MODE_DEFAULT, RENDER_MODE_PIXEL, RENDER_MODE_CIRCULAR_PIXEL, RENDER_MODE_SOBEL, RENDER_MODE_BLOOM
 };
 
 inline int Width = 200;
@@ -37,23 +37,7 @@ inline float NearClip = 0.01f;
 inline bool ShowFPS = true;
 inline bool FreeCamera = true;
 
-inline float WidthRatio;
-inline float HeightRatio;
-inline float PixelWidth;
-inline float PixelRadius;
-
 // engine
-inline Image Canvas;
-inline Texture CanvasTexture;
-inline std::vector<float> DepthBuffer;
-inline std::vector<Triangle> RenderTriangles;
-inline std::vector<Vector3> RenderPoints;
-inline std::vector<SortData> RenderTriangleKeys;
-inline std::vector<int> RenderTriangleOrder;
-inline std::vector<UEShader> RenderShaders;
-inline int CurrentShader = -1;
-inline Vector3 Light = LightDirection;
-
 void InitEngine();
 void CloseEngine();
 void UpdateEngine();
