@@ -48,28 +48,28 @@ int main() {
    UETexture lotus = LoadImage("assets/lotus.png");
    UETexture slime = LoadImage("assets/slime_block.png");
 
-   Geometry ground = NewFace({-50, -50, 0}, {100, 100, 0}, {PI / 2, 0, 0}, {Color{40, 40, 40, 255}});
+   Geometry ground = NewFace({-50, -50, 0}, {100, 100, 0}, ORIGIN_CENTER, {PI / 2, 0, 0}, {Color{40, 40, 40, 255}});
 
-   Geometry rainbowCube = NewCube({3.25, 0.25, 0}, {1, 1, 1}, {0, 0, 0}, rainbow);
-   Geometry brickCube = NewCube({3, 0.5, 2}, {1.5, 1.5, 1.5}, {0, 0, 0}, bricks);
-   Geometry tileWedge = NewWedge({3, 0, -2}, {1, 1, 1}, {0, -PI / 2, 0}, tile);
-   Geometry industrialCube = NewCube({1, 0, -2}, {1, 1, 1}, {0, PI, 0}, wall8, floor9, floor9);
-   Geometry industrialWedge = NewWedge({0, 0, -2}, {1, 1, 1}, {0, PI, 0}, wall8, floor9, wall8, wall8, floor9);
+   Geometry rainbowCube = NewCube({3.25, 0.25, 0}, {1, 1, 1}, ORIGIN_CENTER, {0, 0, 0}, rainbow);
+   Geometry brickCube = NewCube({3, 0.5, 2}, {1.5, 1.5, 1.5}, ORIGIN_CENTER, {0, 0, 0}, bricks);
+   Geometry tileWedge = NewWedge({3, 0, -2}, {1, 1, 1}, ORIGIN_CENTER, {0, -PI / 2, 0}, tile);
+   Geometry industrialCube = NewCube({1, 0, -2}, {1, 1, 1}, ORIGIN_CENTER, {0, PI, 0}, wall8, floor9, floor9);
+   Geometry industrialWedge = NewWedge({0, 0, -2}, {1, 1, 1}, ORIGIN_CENTER, {0, PI, 0}, wall8, floor9, wall8, wall8, floor9);
 
-   Geometry cutout = NewDoubleSidedFace({-1, 0, 5}, {1, 1, 0}, {0, 0, 0}, lotus);
-   Geometry transparentSlime = NewCube({0.5f, 0, 5}, {1, 1, 1}, {0, 0, 0}, slime);
-   Geometry transparentColor = NewCube({2.0f, 0, 5}, {1, 1, 1}, {0, 0, 0}, {Color{255, 125, 0, 125}});
+   Geometry cutout = NewDoubleSidedFace({-1, 0, 5}, {1, 1, 0}, ORIGIN_CENTER, {0, 0, 0}, lotus);
+   Geometry transparentSlime = NewCube({0.5f, 0, 5}, {1, 1, 1}, ORIGIN_CENTER, {0, 0, 0}, slime);
+   Geometry transparentColor = NewCube({2.0f, 0, 5}, {1, 1, 1}, ORIGIN_CENTER, {0, 0, 0}, {Color{255, 125, 0, 125}});
 
-   Geometry floor1 = NewDoubleSidedFace({-1, 0, 3}, {1, 1, 0}, {0, 0, 0}, floor9);
-   Geometry floor2 = NewDoubleSidedFace({-1, 0, 3}, {1, 1, 0}, {PI / 2, 0, 0}, floor5);
-   Geometry red = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, {0, 0, 0}, Red);
-   Geometry green = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, {PI / 2, 0, 0}, Blue);
-   Geometry blue = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, {0, PI / 2, 0}, Green);
+   Geometry floor1 = NewDoubleSidedFace({-1, 0, 3}, {1, 1, 0}, ORIGIN_CENTER, {0, 0, 0}, floor9);
+   Geometry floor2 = NewDoubleSidedFace({-1, 0, 3}, {1, 1, 0}, ORIGIN_CENTER, {PI / 2, 0, 0}, floor5);
+   Geometry red = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, ORIGIN_CENTER, {0, 0, 0}, Red);
+   Geometry green = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, ORIGIN_CENTER, {PI / 2, 0, 0}, Blue);
+   Geometry blue = NewDoubleSidedFace({1, 0, 3}, {1.5, 1.5, 0}, ORIGIN_CENTER, {0, PI / 2, 0}, Green);
 
-   Geometry pyramid = NewPyramid({-3, 0, -1}, {1.5, 1.5, 1.5}, {0, 0, 0}, floor5);
-   Geometry uv = NewFace({-3, 0, 1.5f}, {1, 1, 0}, {0, PI / 2, 0}, Black);
-   Geometry waves = NewFace({-3, 0, 3.0f}, {1, 1, 0}, {0, PI / 2, 0}, Black);
-   Geometry acid = NewFace({-3, 0, 4.5f}, {1, 1, 0}, {0, PI / 2, 0}, Black);
+   Geometry pyramid = NewPyramid({-3, 0, -1}, {1.5, 1.5, 1.5}, ORIGIN_CENTER, {0, 0, 0}, floor5);
+   Geometry uv = NewFace({-3, 0, 1.5f}, {1, 1, 0}, ORIGIN_CENTER, {0, PI / 2, 0}, Black);
+   Geometry waves = NewFace({-3, 0, 3.0f}, {1, 1, 0}, ORIGIN_CENTER, {0, PI / 2, 0}, Black);
+   Geometry acid = NewFace({-3, 0, 4.5f}, {1, 1, 0}, ORIGIN_CENTER, {0, PI / 2, 0}, Black);
 
    UEShader uvShader = {nullptr, UVShader};
    UEShader waveShader = {nullptr, WavesShader};
